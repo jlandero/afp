@@ -306,59 +306,63 @@ async def hacer_login(page: Page) -> bool:
     await _rellenar_campo(page, campo_pass, AFP_PASSWORD)
     logger.info("Contraseña ingresada.")
 
+    # Esperar a que Angular valide el formulario (habilita el botón submit)
+    await page.wait_for_timeout(1_500)
     await screenshot(page, "04_formulario_completo")
 
-    # ── Botón de envío (se presiona después de completar ambos campos) ─────
+    # ── Botón de envío ─────────────────────────────────────────────────────
+    # Usar JS click para bypassear estado disabled de Angular
     selectores_submit = [
         'button[type="submit"]',
-        'input[type="submit"]',
         'button:has-text("Iniciar sesión")',
         'button:has-text("Iniciar Sesión")',
         'button:has-text("Ingresar")',
-        'button:has-text("Entrar")',
-        'button:has-text("Acceder")',
         'button:has-text("Iniciar")',
-        'button:has-text("Continuar")',
+        'input[type="submit"]',
     ]
     enviado = False
     for sel in selectores_submit:
         try:
             btn = page.locator(sel).first
-            if await btn.count() > 0 and await btn.is_visible():
-                await btn.click()
+            if await btn.count() > 0:
+                # JS click bypasea el disabled de Angular
+                await btn.evaluate("el => el.click()")
                 enviado = True
-                logger.info("Botón de login presionado (selector: %s)", sel)
+                logger.info("Botón presionado vía JS (selector: %s)", sel)
                 break
         except Exception:
             continue
 
     if not enviado:
-        logger.info("No se encontró botón submit, enviando con Enter desde contraseña…")
-        await campo_pass.press("Enter")
+        # Último recurso: submit del formulario via JS
+        logger.info("Botón no encontrado, haciendo submit del form vía JS…")
+        await page.evaluate("""
+            const form = document.querySelector('form');
+            if (form) form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+        """)
 
-    # Esperar respuesta del servidor (sin networkidle)
-    logger.info("Esperando respuesta del servidor…")
-    await page.wait_for_timeout(5_000)
-    await screenshot(page, "05_post_login")
-
-    # ── Detectar error de autenticación ───────────────────────────────────
-    html = (await page.content()).lower()
-    errores_login = [
-        "clave incorrecta", "contraseña incorrecta", "rut inválido",
-        "datos incorrectos", "error al iniciar", "intente nuevamente",
-        "credenciales inválidas", "usuario no encontrado",
-    ]
-    for err in errores_login:
-        if err in html:
-            logger.error(
-                "El sitio muestra un error de autenticación ('%s'). "
-                "Verifica AFP_RUT y AFP_PASSWORD en tu .env.",
-                err,
-            )
-            return False
-
-    logger.info("Login exitoso. URL actual: %s", page.url)
-    return True
+    # ── Verificar éxito por cambio de URL (no por keywords) ───────────────
+    logger.info("Esperando navegación post-login…")
+    try:
+        await page.wait_for_url(
+            lambda url: "/login" not in url,
+            timeout=12_000,
+        )
+        logger.info("Login exitoso. URL: %s", page.url)
+        return True
+    except Exception:
+        await screenshot(page, "error_login_url_no_cambio")
+        html = (await page.content()).lower()
+        for err in ["clave incorrecta", "rut inválido", "datos incorrectos",
+                    "intente nuevamente", "credenciales"]:
+            if err in html:
+                logger.error("Credenciales incorrectas ('%s'). Revisa AFP_RUT y AFP_PASSWORD.", err)
+                return False
+        logger.error(
+            "Login falló: la URL no cambió de /login tras 12 s. "
+            "Credenciales inválidas o el sitio bloqueó el acceso."
+        )
+        return False
 
 
 # ---------------------------------------------------------------------------
