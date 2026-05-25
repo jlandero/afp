@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AFP Capital – Fondo A</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --azul:      #1a56db;
+      --azul-dark: #1040b0;
+      --verde:     #057a55;
+      --verde-bg:  #def7ec;
+      --rojo:      #c81e1e;
+      --rojo-bg:   #fde8e8;
+      --gris-bg:   #f4f6fb;
+      --gris-borde:#e2e8f0;
+      --texto:     #1e293b;
+      --subtexto:  #64748b;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--gris-bg);
+      color: var(--texto);
+      min-height: 100vh;
+    }
+
+    /* ── encabezado ── */
+    header {
+      background: var(--azul);
+      color: #fff;
+      padding: 1.25rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    header .logo { font-size: 1.8rem; }
+    header h1 { font-size: 1.2rem; font-weight: 700; }
+    header p  { font-size: .85rem; opacity: .8; }
+
+    /* ── layout ── */
+    main {
+      max-width: 960px;
+      margin: 2rem auto;
+      padding: 0 1.5rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    /* ── tarjetas ── */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 1rem;
+    }
+    .card {
+      background: #fff;
+      border: 1px solid var(--gris-borde);
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    .card.card-principal {
+      border-left: 4px solid var(--azul);
+    }
+    .card .label {
+      font-size: .75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--subtexto);
+      margin-bottom: .4rem;
+    }
+    .card .valor-grande {
+      font-size: 1.75rem;
+      font-weight: 700;
+      line-height: 1.1;
+      letter-spacing: -.02em;
+    }
+    .card .valor-medio {
+      font-size: 1.35rem;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+    .card .sub {
+      font-size: .8rem;
+      color: var(--subtexto);
+      margin-top: .3rem;
+    }
+    .badge {
+      display: inline-block;
+      padding: .2rem .6rem;
+      border-radius: 999px;
+      font-size: .78rem;
+      font-weight: 600;
+      margin-top: .4rem;
+    }
+    .badge.positivo { background: var(--verde-bg); color: var(--verde); }
+    .badge.negativo { background: var(--rojo-bg);  color: var(--rojo); }
+    .badge.neutro   { background: var(--gris-bg);  color: var(--subtexto); }
+    .val-positivo   { color: var(--verde); }
+    .val-negativo   { color: var(--rojo); }
+
+    /* ── gráfico ── */
+    .chart-card {
+      background: #fff;
+      border: 1px solid var(--gris-borde);
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    }
+    .chart-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: .75rem;
+      margin-bottom: 1rem;
+    }
+    .chart-header h2 { font-size: 1rem; font-weight: 600; }
+    .periodo {
+      display: flex;
+      gap: .4rem;
+      flex-wrap: wrap;
+    }
+    .periodo button {
+      border: 1px solid var(--gris-borde);
+      background: #fff;
+      color: var(--subtexto);
+      padding: .3rem .85rem;
+      border-radius: 999px;
+      font-size: .78rem;
+      cursor: pointer;
+      transition: all .15s;
+    }
+    .periodo button.activo,
+    .periodo button:hover {
+      background: var(--azul);
+      border-color: var(--azul);
+      color: #fff;
+    }
+    .chart-wrap {
+      position: relative;
+      height: 300px;
+    }
+
+    /* ── tabla ── */
+    .tabla-card {
+      background: #fff;
+      border: 1px solid var(--gris-borde);
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+      overflow-x: auto;
+    }
+    .tabla-card h2 { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; }
+    table { width: 100%; border-collapse: collapse; font-size: .88rem; }
+    th {
+      text-align: left;
+      padding: .55rem .75rem;
+      border-bottom: 2px solid var(--gris-borde);
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--subtexto);
+      white-space: nowrap;
+    }
+    td { padding: .6rem .75rem; border-bottom: 1px solid var(--gris-borde); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--gris-bg); }
+
+    /* ── estados ── */
+    .estado {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: var(--subtexto);
+      font-size: .95rem;
+    }
+    .spinner {
+      display: inline-block;
+      width: 28px; height: 28px;
+      border: 3px solid var(--gris-borde);
+      border-top-color: var(--azul);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+      margin-bottom: .75rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    footer {
+      text-align: center;
+      font-size: .78rem;
+      color: var(--subtexto);
+      padding: 2rem 1rem 1.5rem;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <span class="logo">📈</span>
+  <div>
+    <h1>AFP Capital – Fondo A</h1>
+    <p>Seguimiento diario del valor total de mis ahorros</p>
+  </div>
+</header>
+
+<main>
+
+  <!-- Tarjetas de resumen -->
+  <div class="stats">
+    <div class="card card-principal">
+      <div class="label">Valor total de mis ahorros</div>
+      <div class="valor-grande" id="valor-total">–</div>
+      <div class="sub" id="fecha-actual">–</div>
+    </div>
+
+    <div class="card">
+      <div class="label">Cambio ayer</div>
+      <div class="valor-medio" id="variacion-dia-monto">–</div>
+      <div id="variacion-dia-pct-badge"></div>
+      <div class="sub">respecto al día anterior hábil</div>
+    </div>
+
+    <div class="card">
+      <div class="label">Cambio últimos 30 días</div>
+      <div class="valor-medio" id="variacion-30d-monto">–</div>
+      <div id="variacion-30d-pct-badge"></div>
+      <div class="sub">últimos 30 registros</div>
+    </div>
+  </div>
+
+  <!-- Gráfico -->
+  <div class="chart-card">
+    <div class="chart-header">
+      <h2>Evolución diaria de mis ahorros</h2>
+      <div class="periodo">
+        <button onclick="filtrar(30)"  class="activo" id="btn-30">30 días</button>
+        <button onclick="filtrar(90)"  id="btn-90">3 meses</button>
+        <button onclick="filtrar(180)" id="btn-180">6 meses</button>
+        <button onclick="filtrar(365)" id="btn-365">1 año</button>
+        <button onclick="filtrar(0)"   id="btn-0">Todo</button>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="grafico"></canvas>
+    </div>
+  </div>
+
+  <!-- Tabla historial -->
+  <div class="tabla-card">
+    <h2>Historial de registros</h2>
+    <div id="tabla-wrap">
+      <div class="estado">
+        <div class="spinner"></div><br>Cargando datos…
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<footer>
+  Datos obtenidos desde AFP Capital · Actualizado automáticamente cada día hábil a las 18:15 hrs
+</footer>
+
+<script>
+  // ── Formato numérico ────────────────────────────────────────────────────
+  const fmtPesos = new Intl.NumberFormat("es-CL", {
+    style: "currency", currency: "CLP",
+    minimumFractionDigits: 0, maximumFractionDigits: 0,
+  });
+
+  const fmtFecha = iso => {
+    const [y, m, d] = iso.split("-");
+    return `${d}/${m}/${y}`;
+  };
+
+  const signo = n => n >= 0 ? "+" : "";
+
+  // ── Estado global ───────────────────────────────────────────────────────
+  let registros = [];
+  let chart = null;
+
+  // ── Carga de datos ──────────────────────────────────────────────────────
+  async function cargar() {
+    try {
+      const [rHoy, rHist] = await Promise.all([
+        fetch("/today"),
+        fetch("/history"),
+      ]);
+
+      if (!rHoy.ok) {
+        const err = await rHoy.json().catch(() => ({}));
+        mostrarError(err.detail || "Error al obtener el registro de hoy.");
+        return;
+      }
+
+      const hoy  = await rHoy.json();
+      const hist = await rHist.json();
+      registros  = hist.registros || [];
+
+      actualizarTarjetas(hoy, registros);
+      renderGrafico(registros.slice(-30));
+      renderTabla(registros);
+
+    } catch {
+      mostrarError("No se pudo conectar con la API. ¿Está corriendo el servidor?");
+    }
+  }
+
+  // ── Tarjetas ────────────────────────────────────────────────────────────
+  function actualizarTarjetas(hoy, todos) {
+    document.getElementById("valor-total").textContent =
+      fmtPesos.format(hoy.valor_total);
+    document.getElementById("fecha-actual").textContent =
+      `Al ${fmtFecha(hoy.fecha)}`;
+
+    // Variación 1 día
+    if (hoy.variacion_dia_pct !== null) {
+      const diff = todos.length >= 2
+        ? hoy.valor_total - todos[todos.length - 2].valor_total
+        : 0;
+      renderVariacion(
+        "variacion-dia-monto", "variacion-dia-pct-badge",
+        diff, hoy.variacion_dia_pct,
+      );
+    }
+
+    // Variación 30 días
+    if (hoy.variacion_30d_pct !== null) {
+      const diff30 = todos.length >= 31
+        ? hoy.valor_total - todos[todos.length - 31].valor_total
+        : 0;
+      renderVariacion(
+        "variacion-30d-monto", "variacion-30d-pct-badge",
+        diff30, hoy.variacion_30d_pct,
+      );
+    }
+  }
+
+  function renderVariacion(idMonto, idBadge, diff, pct) {
+    const elMonto = document.getElementById(idMonto);
+    const elBadge = document.getElementById(idBadge);
+    const clase   = pct >= 0 ? "positivo" : "negativo";
+
+    elMonto.textContent = `${signo(diff)}${fmtPesos.format(diff)}`;
+    elMonto.className   = "valor-medio val-" + clase;
+
+    elBadge.innerHTML =
+      `<span class="badge ${clase}">${signo(pct)}${pct.toFixed(2)}%</span>`;
+  }
+
+  // ── Gráfico ─────────────────────────────────────────────────────────────
+  function renderGrafico(datos) {
+    const ctx = document.getElementById("grafico").getContext("2d");
+    const etiquetas = datos.map(r => fmtFecha(r.fecha));
+    const valores   = datos.map(r => r.valor_total);
+
+    // Color de la línea: verde si tendencia positiva, rojo si negativa
+    const delta = valores.length > 1 ? valores.at(-1) - valores[0] : 0;
+    const color = delta >= 0 ? "26, 148, 105" : "200, 30, 30";
+
+    const grad = ctx.createLinearGradient(0, 0, 0, 280);
+    grad.addColorStop(0, `rgba(${color}, 0.22)`);
+    grad.addColorStop(1, `rgba(${color}, 0.01)`);
+
+    if (chart) {
+      chart.data.labels                 = etiquetas;
+      chart.data.datasets[0].data       = valores;
+      chart.data.datasets[0].borderColor       = `rgb(${color})`;
+      chart.data.datasets[0].backgroundColor   = grad;
+      chart.update("none");
+      return;
+    }
+
+    chart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: etiquetas,
+        datasets: [{
+          label: "Valor total (CLP)",
+          data: valores,
+          borderColor: `rgb(${color})`,
+          backgroundColor: grad,
+          borderWidth: 2,
+          pointRadius: datos.length <= 60 ? 3 : 0,
+          pointHoverRadius: 5,
+          fill: true,
+          tension: 0.3,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: "index", intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => "  " + fmtPesos.format(ctx.parsed.y),
+            },
+          },
+        },
+        scales: {
+          x: {
+            ticks: { maxTicksLimit: 8, font: { size: 11 }, color: "#64748b" },
+            grid: { display: false },
+          },
+          y: {
+            ticks: {
+              font: { size: 11 }, color: "#64748b",
+              callback: v => fmtPesos.format(v),
+            },
+            grid: { color: "#e2e8f0" },
+          },
+        },
+      },
+    });
+  }
+
+  // ── Filtro de período ───────────────────────────────────────────────────
+  function filtrar(dias) {
+    ["30","90","180","365","0"].forEach(id =>
+      document.getElementById(`btn-${id}`).classList.remove("activo")
+    );
+    document.getElementById(`btn-${dias}`).classList.add("activo");
+    const subset = dias === 0 ? registros : registros.slice(-dias);
+    renderGrafico(subset);
+  }
+
+  // ── Tabla ────────────────────────────────────────────────────────────────
+  function renderTabla(todos) {
+    const wrap = document.getElementById("tabla-wrap");
+
+    if (!todos.length) {
+      wrap.innerHTML =
+        '<div class="estado">Sin registros aún. Ejecuta el scraper por primera vez.</div>';
+      return;
+    }
+
+    // Ordenar más reciente primero y calcular variación respecto al anterior
+    const lista = [...todos].reverse();
+    const filas = lista.map((r, i) => {
+      const anterior = lista[i + 1];
+      let variacionHTML = '<span style="color:var(--subtexto)">–</span>';
+
+      if (anterior) {
+        const diff = r.valor_total - anterior.valor_total;
+        const pct  = diff / anterior.valor_total * 100;
+        const clase = diff >= 0 ? "positivo" : "negativo";
+        variacionHTML =
+          `<span class="badge ${clase}" style="font-size:.8rem">` +
+          `${signo(diff)}${fmtPesos.format(diff)} (${signo(pct)}${pct.toFixed(2)}%)` +
+          `</span>`;
+      }
+
+      return `
+        <tr>
+          <td>${fmtFecha(r.fecha)}</td>
+          <td><strong>${fmtPesos.format(r.valor_total)}</strong></td>
+          <td>${variacionHTML}</td>
+        </tr>`;
+    }).join("");
+
+    wrap.innerHTML = `
+      <table>
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Valor total (CLP)</th>
+            <th>Variación vs. día anterior</th>
+          </tr>
+        </thead>
+        <tbody>${filas}</tbody>
+      </table>`;
+  }
+
+  // ── Error ────────────────────────────────────────────────────────────────
+  function mostrarError(msg) {
+    document.getElementById("tabla-wrap").innerHTML =
+      `<div class="estado">⚠️ ${msg}</div>`;
+  }
+
+  // ── Inicio ───────────────────────────────────────────────────────────────
+  cargar();
+</script>
+
+</body>
+</html>

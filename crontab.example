@@ -1,0 +1,31 @@
+# ── Cron job – Scraper AFP Capital Fondo A ──────────────────────────────────
+#
+# Ejecutar el scraper de lunes a viernes a las 18:15 (después de que la
+# Superintendencia de Pensiones publica los valores ~17:30 hrs).
+#
+# Para activarlo:
+#   1. Abre el editor de crontab:   crontab -e
+#   2. Pega la línea siguiente (ajusta las rutas):
+#
+# ┌─ minutos (15)
+# │  ┌─ hora (18)
+# │  │  ┌─ día del mes (* = todos)
+# │  │  │  ┌─ mes (* = todos)
+# │  │  │  │  ┌─ día de la semana (1-5 = lun a vie)
+# │  │  │  │  │
+15 18  *  *  1-5  cd /RUTA/AL/PROYECTO && /RUTA/AL/VENV/bin/python scraper/scraper.py >> logs/scraper.log 2>&1
+#
+# Ejemplo con rutas reales (ajusta según tu sistema):
+# 15 18 * * 1-5 cd /Users/jorgelandero/Documents/proyectos/afp && /Users/jorgelandero/Documents/proyectos/afp/.venv/bin/python scraper/scraper.py >> /Users/jorgelandero/Documents/proyectos/afp/logs/scraper.log 2>&1
+#
+# Para ver los logs:
+#   tail -f logs/scraper.log
+#
+# Para verificar que el cron está activo:
+#   crontab -l
+#
+# ── Notas ───────────────────────────────────────────────────────────────────
+# - El script ya maneja feriados chilenos internamente (no ejecuta si es feriado).
+# - Si tu Mac está apagada a las 18:15, el cron no se dispara.
+#   Alternativa: usa launchd (macOS) o un servidor siempre encendido.
+# - Para launchd en macOS, contacta al asistente para generar el .plist.
