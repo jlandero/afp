@@ -1,18 +1,21 @@
-# Imagen oficial de Microsoft con Python 3.11 + Playwright + Chromium preinstalados
-FROM mcr.microsoft.com/playwright/python:v1.60.0-jammy
+FROM python:3.11-slim
 
 WORKDIR /app
 
-# Dependencias primero para aprovechar la cache de Docker
 COPY requirements.txt .
+
+# Instalar dependencias Python (incluye playwright==1.60.0)
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Código fuente
+# Instalar dependencias del sistema para Chromium y luego el browser
+# playwright install-deps resuelve automáticamente los paquetes apt necesarios
+RUN playwright install-deps chromium && playwright install chromium
+
 COPY . .
 
-# El volumen de Railway se monta en /data
 RUN mkdir -p /data
 
 EXPOSE 8000
 
-CMD ["python", "-m", "uvicorn", "api.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Shell form para que $PORT sea expandido por el shell
+CMD sh -c "python -m uvicorn api.main:app --host 0.0.0.0 --port $PORT"
