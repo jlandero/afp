@@ -452,8 +452,8 @@ async def obtener_saldo_total(page: Page) -> Optional[float]:
 async def ejecutar_scraper() -> Optional[float]:
     async with async_playwright() as pw:
         browser = await pw.chromium.launch(
-            headless=not DEBUG,
-            slow_mo=500 if DEBUG else 0,
+            headless=True,  # siempre headless: Railway no tiene display
+            slow_mo=300 if DEBUG else 0,
             args=["--no-sandbox", "--disable-dev-shm-usage"],
         )
         contexto = await browser.new_context(
