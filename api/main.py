@@ -19,6 +19,7 @@ from datetime import date
 from pathlib import Path
 from typing import Generator, Optional
 
+import pytz
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from dotenv import load_dotenv
@@ -97,7 +98,7 @@ async def lifespan(app: FastAPI):
         CronTrigger(
             hour=1, minute=0,
             day_of_week="mon-fri",
-            timezone="America/Santiago",
+            timezone=pytz.timezone("America/Santiago"),
         ),
         id="scraper_diario",
         replace_existing=True,
