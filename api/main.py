@@ -106,6 +106,12 @@ async def lifespan(app: FastAPI):
     )
     scheduler.start()
     logger.info("Scheduler iniciado – próxima ejecución: L-V 01:00 hora Chile.")
+
+    # Crear la DB en startup para que /today no falle antes del primer scraper
+    with sqlite3.connect(DB_PATH) as conn:
+        from scraper.scraper import init_db
+        init_db(conn)
+
     yield
     # ── Shutdown ─────────────────────────────────────────────────────────
     scheduler.shutdown(wait=False)
@@ -242,15 +248,43 @@ async def historial(
 @app.post("/scraper/run", summary="Ejecutar scraper manualmente")
 async def ejecutar_manualmente(x_scraper_secret: str = Header(default="")):
     """
-    Dispara el scraper de inmediato (útil para el primer deploy o para debugging).
+    Dispara el scraper y espera el resultado (puede tardar ~60 segundos).
     Requiere el header X-Scraper-Secret con el valor de la variable SCRAPER_SECRET.
     """
     if SCRAPER_SECRET and x_scraper_secret != SCRAPER_SECRET:
         raise HTTPException(status_code=403, detail="Secret inválido.")
 
-    import asyncio
-    asyncio.create_task(tarea_scraper_diaria())
-    return {"mensaje": "Scraper iniciado en background. Revisa los logs del servidor."}
+    from scraper.scraper import ejecutar_scraper, es_dia_habil, init_db, guardar_registro
+
+    hoy = date.today()
+    logger.info("▶ Scraper manual iniciado para %s", hoy)
+
+    try:
+        valor_total = await ejecutar_scraper()
+    except Exception as exc:
+        logger.error("Error en scraper manual: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error en el scraper: {exc}")
+
+    if valor_total is None:
+        raise HTTPException(
+            status_code=502,
+            detail=(
+                "El scraper no obtuvo el saldo. "
+                "Revisa los logs del servidor para más detalles. "
+                "Causas comunes: credenciales incorrectas, sitio AFP no disponible."
+            ),
+        )
+
+    with sqlite3.connect(DB_PATH) as conn:
+        init_db(conn)
+        guardar_registro(conn, hoy, valor_total)
+
+    return {
+        "ok": True,
+        "fecha": hoy.isoformat(),
+        "valor_total": valor_total,
+        "valor_formateado": f"${valor_total:,.0f} CLP",
+    }
 
 
 # ---------------------------------------------------------------------------
