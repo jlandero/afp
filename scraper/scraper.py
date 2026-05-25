@@ -456,9 +456,16 @@ async def obtener_saldo_total(page: Page) -> Optional[float]:
 async def ejecutar_scraper() -> Optional[float]:
     async with async_playwright() as pw:
         browser = await pw.chromium.launch(
-            headless=True,  # siempre headless: Railway no tiene display
+            headless=True,
             slow_mo=300 if DEBUG else 0,
-            args=["--no-sandbox", "--disable-dev-shm-usage"],
+            args=[
+                "--no-sandbox",
+                "--disable-dev-shm-usage",
+                # Ocultar que es un browser automatizado
+                "--disable-blink-features=AutomationControlled",
+                "--disable-infobars",
+                "--window-size=1280,800",
+            ],
         )
         contexto = await browser.new_context(
             viewport={"width": 1280, "height": 800},
@@ -469,8 +476,20 @@ async def ejecutar_scraper() -> Optional[float]:
                 "AppleWebKit/537.36 (KHTML, like Gecko) "
                 "Chrome/125.0.0.0 Safari/537.36"
             ),
+            # No incluir headers que delatan automatización
+            extra_http_headers={
+                "Accept-Language": "es-CL,es;q=0.9",
+            },
         )
         page = await contexto.new_page()
+
+        # Ocultar navigator.webdriver (lo que detectan los sitios anti-bot)
+        await contexto.add_init_script("""
+            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+            Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3] });
+            Object.defineProperty(navigator, 'languages', { get: () => ['es-CL', 'es'] });
+            window.chrome = { runtime: {} };
+        """)
 
         try:
             login_ok = await hacer_login(page)
