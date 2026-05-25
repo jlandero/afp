@@ -1,5 +1,5 @@
 # Imagen oficial de Microsoft con Python 3.11 + Playwright + Chromium preinstalados
-FROM mcr.microsoft.com/playwright/python:v1.44.0-jammy
+FROM mcr.microsoft.com/playwright/python:v1.60.0-jammy
 
 WORKDIR /app
 
