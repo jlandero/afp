@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.afpcapital.scraper</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <!-- Ajusta esta ruta si tu virtualenv está en otro lugar -->
+        <string>/Users/jorgelandero/Documents/proyectos/afp/.venv/bin/python</string>
+        <string>/Users/jorgelandero/Documents/proyectos/afp/scraper/scraper.py</string>
+    </array>
+
+    <!-- Variables de entorno (Railway_URL, credenciales, etc.)
+         Alternativa: carga desde .env directamente si usas python-dotenv -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>AFP_RUT</key>
+        <string>REEMPLAZA_CON_TU_RUT</string>
+        <key>AFP_PASSWORD</key>
+        <string>REEMPLAZA_CON_TU_PASSWORD</string>
+        <key>RAILWAY_URL</key>
+        <string>REEMPLAZA_CON_TU_URL_RAILWAY</string>
+        <key>SCRAPER_SECRET</key>
+        <string>REEMPLAZA_CON_TU_SECRET</string>
+    </dict>
+
+    <!-- Ejecutar L-V a las 18:15 hora local del Mac -->
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>18</integer><key>Minute</key><integer>15</integer></dict>
+        <dict><key>Weekday</key><integer>2</integer><key>Hour</key><integer>18</integer><key>Minute</key><integer>15</integer></dict>
+        <dict><key>Weekday</key><integer>3</integer><key>Hour</key><integer>18</integer><key>Minute</key><integer>15</integer></dict>
+        <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>18</integer><key>Minute</key><integer>15</integer></dict>
+        <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>18</integer><key>Minute</key><integer>15</integer></dict>
+    </array>
+
+    <key>StandardOutPath</key>
+    <string>/Users/jorgelandero/Documents/proyectos/afp/logs/scraper.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/jorgelandero/Documents/proyectos/afp/logs/scraper_err.log</string>
+
+    <!-- Si el Mac estaba durmiendo a las 18:15, launchd ejecuta el job
+         apenas se despierta (si no han pasado más de RunAtLoad seconds) -->
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>

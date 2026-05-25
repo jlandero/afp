@@ -35,6 +35,9 @@ AFP_RUT: str = os.getenv("AFP_RUT", "")
 AFP_PASSWORD: str = os.getenv("AFP_PASSWORD", "")
 DB_PATH: Path = Path(os.getenv("DB_PATH", Path(__file__).parent.parent / "data.db"))
 DEBUG: bool = os.getenv("DEBUG_SCRAPER", "false").lower() == "true"
+# Si está definido, envía el dato a Railway en vez de guardar local
+RAILWAY_URL: str = os.getenv("RAILWAY_URL", "")       # ej: https://afp-xxx.up.railway.app
+SCRAPER_SECRET: str = os.getenv("SCRAPER_SECRET", "")
 SCREENSHOT_DIR: Path = Path(__file__).parent.parent / "logs" / "screenshots"
 URL_AFP = "https://nueva-2.afpcapital.cl/"
 
@@ -532,9 +535,23 @@ def main() -> None:
         )
         return
 
-    with sqlite3.connect(DB_PATH) as conn:
-        init_db(conn)
-        guardar_registro(conn, hoy, valor_total)
+    if RAILWAY_URL:
+        import json as _json
+        import urllib.request
+
+        url = f"{RAILWAY_URL.rstrip('/')}/registros?valor_total={valor_total}"
+        req = urllib.request.Request(url, method="POST")
+        req.add_header("X-Scraper-Secret", SCRAPER_SECRET)
+        try:
+            with urllib.request.urlopen(req, timeout=30) as resp:
+                data = _json.loads(resp.read())
+            logger.info("Enviado a Railway: %s", data.get("valor_formateado"))
+        except Exception as exc:
+            logger.error("Error enviando a Railway: %s", exc)
+    else:
+        with sqlite3.connect(DB_PATH) as conn:
+            init_db(conn)
+            guardar_registro(conn, hoy, valor_total)
 
 
 if __name__ == "__main__":

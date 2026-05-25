@@ -245,6 +245,37 @@ async def historial(
     return {"total": len(filas), "registros": [fila_a_dict(f) for f in filas]}
 
 
+@app.post("/registros", summary="Registrar valor total manualmente (desde scraper local)")
+async def registrar_valor(
+    valor_total: float,
+    x_scraper_secret: str = Header(default=""),
+    fecha: Optional[str] = None,
+):
+    """
+    Recibe el valor total del día enviado por el scraper corriendo en Mac.
+    Protegido por X-Scraper-Secret.
+    """
+    if SCRAPER_SECRET and x_scraper_secret != SCRAPER_SECRET:
+        raise HTTPException(status_code=403, detail="Secret inválido.")
+
+    if valor_total <= 0:
+        raise HTTPException(status_code=422, detail="valor_total debe ser mayor que 0.")
+
+    dia = date.fromisoformat(fecha) if fecha else date.today()
+
+    from scraper.scraper import init_db, guardar_registro
+    with sqlite3.connect(DB_PATH) as conn:
+        init_db(conn)
+        guardar_registro(conn, dia, valor_total)
+
+    return {
+        "ok": True,
+        "fecha": dia.isoformat(),
+        "valor_total": valor_total,
+        "valor_formateado": f"${valor_total:,.0f} CLP",
+    }
+
+
 @app.post("/scraper/run", summary="Ejecutar scraper manualmente")
 async def ejecutar_manualmente(x_scraper_secret: str = Header(default="")):
     """
